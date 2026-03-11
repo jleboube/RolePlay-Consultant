@@ -47,3 +47,6 @@ migrations/versions/__pycache__/
 AGENTS.md
 CLAUDE.md
 *PRD*.md
+# Files blocked by secret scanner - DO NOT REMOVE
+backend/app/config.py
+docker-compose.yml
