@@ -16,6 +16,9 @@ export function useSpeechRecognition(
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const finalTranscriptRef = useRef("");
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
 
   const SpeechRecognitionAPI =
     typeof window !== "undefined"
@@ -30,6 +33,8 @@ export function useSpeechRecognition(
       return;
     }
 
+    finalTranscriptRef.current = "";
+
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -37,29 +42,23 @@ export function useSpeechRecognition(
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = "";
-      let finalTranscript = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
-          finalTranscript += result[0].transcript;
+          finalTranscriptRef.current += result[0].transcript;
         } else {
           interimTranscript += result[0].transcript;
         }
       }
 
-      if (finalTranscript) {
-        setTranscript(finalTranscript);
-        onResult?.(finalTranscript);
-      } else {
-        setTranscript(interimTranscript);
-      }
+      setTranscript(finalTranscriptRef.current + interimTranscript);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       if (event.error === "not-allowed") {
         setError("Microphone access denied. Please allow microphone access.");
-      } else {
+      } else if (event.error !== "aborted") {
         setError(`Speech recognition error: ${event.error}`);
       }
       setIsListening(false);
@@ -74,11 +73,19 @@ export function useSpeechRecognition(
     setIsListening(true);
     setError(null);
     setTranscript("");
-  }, [SpeechRecognitionAPI, onResult]);
+  }, [SpeechRecognitionAPI]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
+    recognitionRef.current = null;
     setIsListening(false);
+
+    const fullTranscript = finalTranscriptRef.current.trim();
+    if (fullTranscript) {
+      onResultRef.current?.(fullTranscript);
+    }
+    finalTranscriptRef.current = "";
+    setTranscript("");
   }, []);
 
   return { transcript, isListening, isSupported, error, startListening, stopListening };

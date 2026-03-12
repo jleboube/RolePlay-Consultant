@@ -43,10 +43,17 @@ coverage/
 # Alembic
 migrations/versions/__pycache__/
 
+# Secrets & credentials
+*.pem
+*.key
+*.p12
+credentials.json
+secrets.json
+
+# Claude Code
+.claude/
+
 # Misc
 AGENTS.md
 CLAUDE.md
 *PRD*.md
-# Files blocked by secret scanner - DO NOT REMOVE
-backend/app/config.py
-docker-compose.yml

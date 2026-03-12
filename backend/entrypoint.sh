@@ -7,6 +7,15 @@ if [ -z "$SECRET_KEY" ] || [ "$SECRET_KEY" = "change-me-in-production" ]; then
     echo "Generated SECRET_KEY automatically."
 fi
 
+# Auto-generate ADMIN_PASSWORD if not set
+if [ -z "$ADMIN_PASSWORD" ]; then
+    export ADMIN_PASSWORD=$(python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(24)).decode())")
+    echo "============================================"
+    echo "  ADMIN_PASSWORD: $ADMIN_PASSWORD"
+    echo "  Save this to your .env for persistence!"
+    echo "============================================"
+fi
+
 echo "Running database migrations..."
 flask db upgrade
 

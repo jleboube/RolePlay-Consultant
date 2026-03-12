@@ -1,60 +1,90 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+
+export const OPENAI_VOICES = [
+  { id: "alloy", name: "Alloy", description: "Neutral and balanced" },
+  { id: "ash", name: "Ash", description: "Warm and clear" },
+  { id: "coral", name: "Coral", description: "Warm and expressive" },
+  { id: "echo", name: "Echo", description: "Smooth and composed" },
+  { id: "fable", name: "Fable", description: "Expressive and dynamic" },
+  { id: "nova", name: "Nova", description: "Friendly and natural" },
+  { id: "onyx", name: "Onyx", description: "Deep and authoritative" },
+  { id: "sage", name: "Sage", description: "Calm and thoughtful" },
+  { id: "shimmer", name: "Shimmer", description: "Clear and bright" },
+] as const;
+
+export type OpenAIVoice = (typeof OPENAI_VOICES)[number]["id"];
 
 interface SpeechSynthesisHook {
-  voices: SpeechSynthesisVoice[];
   isSpeaking: boolean;
-  speak: (text: string, voiceName?: string) => void;
+  speak: (text: string, voice?: string) => void;
   stop: () => void;
 }
 
 export function useSpeechSynthesis(): SpeechSynthesisHook {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      setVoices(availableVoices);
-    };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
-
-  const speak = useCallback(
-    (text: string, voiceName?: string) => {
-      if (!window.speechSynthesis) return;
-
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-
-      if (voiceName) {
-        const voice = voices.find((v) => v.name === voiceName);
-        if (voice) utterance.voice = voice;
-      }
-
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-
-      window.speechSynthesis.speak(utterance);
-    },
-    [voices],
-  );
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const stop = useCallback(() => {
-    window.speechSynthesis?.cancel();
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setIsSpeaking(false);
   }, []);
 
-  return { voices, isSpeaking, speak, stop };
+  const speak = useCallback(
+    (text: string, voice?: string) => {
+      stop();
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setIsSpeaking(true);
+
+      fetch("/api/tts", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: voice || "nova" }),
+        signal: controller.signal,
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("TTS request failed");
+          return res.blob();
+        })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audioRef.current = audio;
+
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            setIsSpeaking(false);
+            audioRef.current = null;
+          };
+
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            setIsSpeaking(false);
+            audioRef.current = null;
+          };
+
+          audio.play();
+        })
+        .catch((err) => {
+          if (err.name !== "AbortError") {
+            console.error("TTS error:", err);
+          }
+          setIsSpeaking(false);
+        });
+    },
+    [stop],
+  );
+
+  return { isSpeaking, speak, stop };
 }

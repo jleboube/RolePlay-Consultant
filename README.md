@@ -16,16 +16,18 @@
   <img src="https://img.shields.io/badge/Socket.IO-010101?logo=socketdotio&logoColor=fff" alt="Socket.IO"/>
   <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff" alt="Docker"/>
   <img src="https://img.shields.io/badge/Nginx-009639?logo=nginx&logoColor=fff" alt="Nginx"/>
+  <img src="https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=fff" alt="Cloudflare"/>
 </p>
 
 <p align="center">
-  A web application that helps software consultants practice role-playing scenarios with AI-powered executive personas. Select a persona, speak naturally via your microphone, and receive real-time conversational responses. Each session ends with structured performance feedback to help you improve.
+  A web application that helps software consultants practice role-playing scenarios with AI-powered executive personas. Select a persona, speak naturally via your microphone, and receive real-time conversational responses with natural-sounding OpenAI TTS voices. Each session ends with structured performance feedback to help you improve.
 </p>
 
 <p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#ai-personas">AI Personas</a> •
+  <a href="#admin-panel">Admin Panel</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#tech-stack">Tech Stack</a>
 </p>
@@ -34,46 +36,52 @@
 
 ## Features
 
-- **Multiple AI Personas** - Practice with a Sr VP of Software, CTO, CIO, or Project Manager, each with unique personality traits and objections
-- **Voice Interaction** - Speak naturally using your microphone via the Web Speech API
-- **Voice Selection** - Choose from available browser speech synthesis voices for AI responses
-- **Text Fallback** - Full text input available when microphone access is denied or unsupported
-- **Real-Time Chat** - WebSocket-powered conversation with low-latency AI responses
-- **Multi-Agent Orchestration** - Central orchestrator routes messages to isolated persona agents with no inter-agent communication
-- **Session Feedback** - AI-generated end-of-session performance analysis with score, strengths, and improvement areas
-- **Session History** - Review past conversations and feedback to track your progress
-- **Google OAuth** - Secure authentication with minimal data storage
-- **Responsive Design** - Works on desktop and mobile browsers
-- **Docker Deployment** - One-command deployment with Docker Compose
+- **Multiple AI Personas** — Practice with a Sr VP of Software, CTO, CIO, or Project Manager, each with unique personality traits and objections
+- **Versioned Personas** — Create, edit, and manage personas through the admin panel; every edit is versioned with full history and rollback
+- **OpenAI TTS Voices** — Natural-sounding AI responses via OpenAI's `tts-1` model with 9 voice options (alloy, ash, coral, echo, fable, nova, onyx, sage, shimmer)
+- **Push-to-Talk Input** — Speak naturally without being cut off on pauses; tap the mic button to finish recording
+- **Text Fallback** — Full text input available when microphone access is denied or unsupported
+- **Real-Time Chat** — WebSocket-powered conversation with low-latency AI responses
+- **Multi-Agent Orchestration** — Central orchestrator routes messages to isolated persona agents with no inter-agent communication
+- **Session Feedback** — AI-generated end-of-session performance analysis with score, strengths, and improvement areas
+- **Session History** — Review past conversations and feedback to track your progress
+- **Google & Microsoft OAuth** — Authenticate with Google or Microsoft 365 (Microsoft configured via admin panel)
+- **Admin Panel** — Manage personas, view all report cards, configure Microsoft auth, and connect OneDrive data sources
+- **OneDrive Integration** — Augment persona context with organizational documents synced from OneDrive folders
+- **Cloudflare Tunnel Support** — Production-ready deployment behind Cloudflare tunnels with automatic proxy header handling
+- **Responsive Design** — Works on desktop and mobile browsers
+- **Docker Deployment** — One-command deployment with Docker Compose
 
 ## Tech Stack
 
 ### Frontend
-- **React 18** - Modern UI framework with hooks
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tooling
-- **Tailwind CSS** - Utility-first styling
-- **Socket.IO Client** - Real-time WebSocket communication
-- **Web Speech API** - Browser-native speech recognition and synthesis
+- **React 18** — Modern UI framework with hooks
+- **TypeScript** — Type-safe development
+- **Vite** — Fast build tooling
+- **Tailwind CSS** — Utility-first styling
+- **Socket.IO Client** — Real-time WebSocket communication
+- **Web Speech API** — Browser-native speech recognition (push-to-talk)
 
 ### Backend
-- **Python 3.12** - Backend runtime
-- **Flask** - Lightweight web framework
-- **Flask-SocketIO** - WebSocket support with eventlet
-- **SQLAlchemy** - ORM with Alembic migrations
-- **Flask-Dance** - Google OAuth 2.0 integration
-- **OpenAI SDK** - GPT-4o for persona conversations and feedback generation
+- **Python 3.12** — Backend runtime
+- **Flask** — Lightweight web framework
+- **Flask-SocketIO** — WebSocket support with eventlet
+- **SQLAlchemy** — ORM with Alembic migrations
+- **Flask-Dance** — Google OAuth 2.0 integration
+- **OpenAI SDK** — GPT-4o for persona conversations and feedback; TTS-1 for voice synthesis
 
 ### Infrastructure
-- **Docker** - Containerized deployment
-- **Nginx** - Reverse proxy with WebSocket support
-- **PostgreSQL 16** - Relational database for users, sessions, and messages
-- **Docker Compose** - Multi-container orchestration
+- **Docker** — Containerized deployment
+- **Nginx** — Reverse proxy with WebSocket support and dynamic domain templating
+- **PostgreSQL 16** — Relational database for users, sessions, messages, personas, and admin config
+- **Docker Compose** — Multi-container orchestration
+- **Cloudflare Tunnel** — HTTPS termination and DNS routing
 
 ## Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
+- A domain with Cloudflare Tunnel configured (or modify for local use)
 - A Google OAuth client ID and secret ([Google Cloud Console](https://console.cloud.google.com/apis/credentials))
 - An OpenAI API key ([OpenAI Platform](https://platform.openai.com/api-keys))
 
@@ -91,11 +99,15 @@
    ```
    Edit `.env` and add your credentials:
    ```
+   FLASK_ENV=production
+   DATABASE_URL=REDACTED_SECRET
+   DOMAIN=your-domain.example.com
    GOOGLE_CLIENT_ID=your-google-client-id
    GOOGLE_CLIENT_SECRET=your-google-client-secret
    OPENAI_API_KEY=your-openai-api-key
+   ADMIN_PASSWORD=
    ```
-   > `SECRET_KEY` is auto-generated at deploy time — no manual setup needed.
+   > `SECRET_KEY` is auto-generated at deploy time. If `ADMIN_PASSWORD` is left empty, a secure one is generated and printed to the backend container logs.
 
 3. **Build and run with Docker**
    ```bash
@@ -104,7 +116,19 @@
 
 4. **Access the application**
 
-   Open your browser to `http://localhost:47391`
+   Navigate to `https://your-domain.example.com`
+
+5. **Retrieve the admin password** (if auto-generated)
+   ```bash
+   docker compose logs backend | grep "ADMIN_PASSWORD"
+   ```
+
+### Google OAuth Setup
+
+Add the following authorized redirect URI in Google Cloud Console:
+```
+https://your-domain.example.com/api/auth/google/authorized
+```
 
 ### Stopping the Application
 
@@ -121,17 +145,28 @@ docker compose down
 | **Chief Information Officer** | Governance, compliance, digital transformation | Risk-aware, process-oriented, focused on change management |
 | **Project Manager** | Timelines, scope, deliverables | Schedule-driven, pragmatic, concerned with dependencies |
 
-Each persona has predefined traits, common objections, and domain knowledge tailored to software consulting scenarios. The orchestrator ensures strict isolation — no direct inter-agent communication occurs.
+Each persona has predefined traits, common objections, and domain knowledge tailored to software consulting scenarios. Custom personas can be created and existing ones modified through the admin panel — every change creates a new version while preserving the full history.
+
+## Admin Panel
+
+Access the admin panel at `/admin` and log in with the admin password from your `.env` or container logs.
+
+### Capabilities
+
+- **Report Cards** — View all users' completed session feedback with scores, strengths, and improvement areas
+- **Personas** — Create new personas, edit existing ones (versioned), view version history, restore previous versions, or deactivate personas
+- **Microsoft Auth** — Configure Azure AD credentials (client ID, tenant ID, client secret) to enable Microsoft 365 login
+- **OneDrive** — Connect to OneDrive via Microsoft Graph API, add folder paths, and sync organizational documents to augment persona context
 
 ## User Flow
 
-1. **Landing Page** - Browse features and click "Get Started"
-2. **Authenticate** - Sign in with Google OAuth
-3. **Select Persona** - Choose an executive to practice with
-4. **Select Voice** - Pick an AI voice from your browser's available options
-5. **Start Session** - Begin a voice or text-based role-play conversation
-6. **End Session** - Receive structured feedback with a score, strengths, and improvement suggestions
-7. **Review History** - Revisit past sessions and track your progress
+1. **Landing Page** — Browse features and click "Get Started"
+2. **Authenticate** — Sign in with Google or Microsoft
+3. **Select Persona** — Choose an executive to practice with
+4. **Select Voice** — Pick an OpenAI TTS voice for AI responses
+5. **Start Session** — Begin a voice or text-based role-play conversation
+6. **End Session** — Receive structured feedback with a score, strengths, and improvement suggestions
+7. **Review History** — Revisit past sessions and track your progress
 
 ## Configuration
 
@@ -139,12 +174,13 @@ Each persona has predefined traits, common objections, and domain knowledge tail
 
 | Variable | Description | Required |
 |----------|-------------|----------|
+| `DOMAIN` | Your domain name (e.g., `training.my-ai.tech`) | Yes |
 | `GOOGLE_CLIENT_ID` | Google OAuth 2.0 client ID | Yes |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client secret | Yes |
-| `OPENAI_API_KEY` | OpenAI API key for GPT-4o | Yes |
+| `OPENAI_API_KEY` | OpenAI API key for GPT-4o and TTS-1 | Yes |
 | `DATABASE_URL` | PostgreSQL connection string | No (default provided) |
 | `FLASK_ENV` | Flask environment (`development` or `production`) | No |
-| `OAUTHLIB_INSECURE_TRANSPORT` | Set to `1` for local dev without HTTPS | No |
+| `ADMIN_PASSWORD` | Admin panel password (auto-generated if empty) | No |
 
 ### Session Feedback
 
@@ -172,22 +208,29 @@ docker compose exec backend pytest tests/ -v
 RolePlayAIConsultant/
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py              # Flask app factory
+│   │   ├── __init__.py              # Flask app factory with ProxyFix
 │   │   ├── config.py                # Configuration from env vars
 │   │   ├── extensions.py            # DB, SocketIO, login manager
 │   │   ├── errors.py                # Global error handlers
+│   │   ├── admin/
+│   │   │   ├── routes.py            # Admin API (report cards, personas, config)
+│   │   │   ├── decorators.py        # Admin auth decorator
+│   │   │   └── onedrive_service.py  # Microsoft Graph API for OneDrive
 │   │   ├── auth/
-│   │   │   ├── routes.py            # Google OAuth routes
+│   │   │   ├── routes.py            # Google & Microsoft OAuth routes
 │   │   │   └── decorators.py        # WebSocket auth decorator
 │   │   ├── chat/
-│   │   │   ├── routes.py            # REST endpoints (sessions, personas)
+│   │   │   ├── routes.py            # REST endpoints (sessions, personas, TTS)
 │   │   │   └── events.py            # WebSocket event handlers
 │   │   ├── models/
-│   │   │   ├── user.py              # User model
-│   │   │   └── session.py           # ChatSession and Message models
+│   │   │   ├── user.py              # User model (Google + Microsoft auth)
+│   │   │   ├── session.py           # ChatSession and Message models
+│   │   │   ├── persona.py           # PersonaVersion model (versioned)
+│   │   │   ├── admin_config.py      # Key-value admin config store
+│   │   │   └── onedrive.py          # OneDriveFolder model
 │   │   └── orchestrator/
-│   │       ├── orchestrator.py      # Central orchestration logic
-│   │       ├── personas.py          # Persona definitions and registry
+│   │       ├── orchestrator.py      # Central orchestration with augmentation
+│   │       ├── personas.py          # Persona registry (DB-backed with fallback)
 │   │       └── feedback.py          # Session feedback generator
 │   ├── migrations/                   # Alembic database migrations
 │   ├── tests/                        # pytest test suite
@@ -196,18 +239,20 @@ RolePlayAIConsultant/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── admin/               # Admin panel tabs (personas, reports, etc.)
 │   │   │   ├── landing/             # Hero, features sections
 │   │   │   ├── chat/                # Chat UI, persona/voice selectors
 │   │   │   ├── history/             # Session list and review
-│   │   │   └── common/              # Navbar, error boundary
-│   │   ├── hooks/                    # useAuth, useSocket, useSpeech*
-│   │   ├── services/                 # API client, Socket.IO client
-│   │   ├── pages/                    # Landing, Chat, History pages
+│   │   │   └── common/              # Navbar, Footer, error boundary
+│   │   ├── hooks/                    # useAuth, useAdmin, useSocket, useSpeech*
+│   │   ├── services/                 # API client, admin API, Socket.IO client
+│   │   ├── pages/                    # Landing, Chat, History, Admin pages
 │   │   └── types/                    # TypeScript interfaces
 │   ├── Dockerfile
 │   └── package.json
 ├── nginx/
-│   ├── nginx.conf                    # Reverse proxy configuration
+│   ├── nginx.conf.template          # Nginx config with domain templating
+│   ├── docker-entrypoint.sh         # envsubst for dynamic domain
 │   └── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
@@ -221,10 +266,19 @@ RolePlayAIConsultant/
 | GET | `/api/health` | Health check |
 | GET | `/api/auth/me` | Current user info |
 | GET | `/api/auth/login` | Initiate Google OAuth |
+| GET | `/api/auth/login/microsoft` | Initiate Microsoft OAuth |
 | POST | `/api/auth/logout` | Sign out |
+| GET | `/api/auth/providers` | List available auth providers |
 | GET | `/api/personas` | List available personas |
 | GET | `/api/sessions` | List user's session history |
 | GET | `/api/sessions/:id` | Get session with messages |
+| POST | `/api/tts` | Generate OpenAI TTS audio |
+| POST | `/api/admin/login` | Admin authentication |
+| GET | `/api/admin/personas` | List all personas (admin) |
+| POST | `/api/admin/personas` | Create new persona |
+| PUT | `/api/admin/personas/:name` | Update persona (new version) |
+| GET | `/api/admin/personas/:name/versions` | Persona version history |
+| GET | `/api/admin/report-cards` | List all report cards |
 
 ### WebSocket Events
 
@@ -249,8 +303,8 @@ RolePlayAIConsultant/
 ### OAuth redirect errors
 
 - Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set correctly in `.env`
-- For local development, ensure `OAUTHLIB_INSECURE_TRANSPORT=1` is set
-- Add `http://localhost:47391/api/auth/google/authorized` as an authorized redirect URI in Google Cloud Console
+- Ensure the authorized redirect URI in Google Cloud Console is `https://your-domain/api/auth/google/authorized`
+- For Microsoft OAuth, configure credentials in the admin panel under Microsoft Auth
 
 ### AI responses not working
 
@@ -270,5 +324,5 @@ MIT License - see LICENSE file for details.
 ---
 
 <p align="center">
-  Built with React, Flask, and OpenAI
+  RolePlay AI Consultant &mdash; 2026 &copy; Joe LeBoube - Powered by multi-agent AI orchestration
 </p>

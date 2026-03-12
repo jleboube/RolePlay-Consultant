@@ -1,4 +1,7 @@
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,24 +22,52 @@ class Persona:
 
 
 class PersonaRegistry:
-    _personas: dict[str, Persona] = {}
+    _builtin_personas: dict[str, Persona] = {}
 
     @classmethod
     def register(cls, persona: Persona):
-        cls._personas[persona.name] = persona
+        cls._builtin_personas[persona.name] = persona
+
+    @classmethod
+    def _from_db(cls, pv) -> Persona:
+        """Convert a PersonaVersion DB row to a Persona dataclass."""
+        return Persona(
+            name=pv.name,
+            title=pv.title,
+            system_prompt=pv.system_prompt,
+            traits=pv.traits or [],
+            description=pv.description or "",
+        )
 
     @classmethod
     def get(cls, name: str) -> Persona:
-        if name not in cls._personas:
-            available = list(cls._personas.keys())
-            raise ValueError(
-                f"Unknown persona: '{name}'. Available personas: {available}"
-            )
-        return cls._personas[name]
+        try:
+            from app.models.persona import PersonaVersion
+            pv = PersonaVersion.get_latest(name)
+            if pv:
+                return cls._from_db(pv)
+        except Exception as e:
+            logger.warning("DB persona lookup failed for '%s': %s", name, e)
+
+        if name in cls._builtin_personas:
+            return cls._builtin_personas[name]
+
+        available = list(cls._builtin_personas.keys())
+        raise ValueError(
+            f"Unknown persona: '{name}'. Available personas: {available}"
+        )
 
     @classmethod
     def list_all(cls) -> list[Persona]:
-        return list(cls._personas.values())
+        try:
+            from app.models.persona import PersonaVersion
+            db_personas = PersonaVersion.get_all_latest()
+            if db_personas:
+                return [cls._from_db(pv) for pv in db_personas]
+        except Exception as e:
+            logger.warning("DB persona listing failed: %s", e)
+
+        return list(cls._builtin_personas.values())
 
 
 # Register built-in personas

@@ -19,11 +19,11 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState("nova");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { emit, on, off } = useSocket();
-  const { voices, speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const { speak, stop: stopSpeaking } = useSpeechSynthesis();
 
   const handleSpeechResult = useCallback(
     (transcript: string) => {
@@ -148,7 +148,6 @@ export default function ChatInterface() {
         />
 
         <VoiceSelector
-          voices={voices}
           selectedVoice={selectedVoice}
           onSelect={setSelectedVoice}
           disabled={!!sessionId}

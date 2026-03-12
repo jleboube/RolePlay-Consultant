@@ -5,6 +5,33 @@ from app.orchestrator.personas import PersonaRegistry, Persona
 logger = logging.getLogger(__name__)
 
 
+def _load_augmentation(persona_name: str) -> str:
+    """Load cached OneDrive content for persona augmentation."""
+    try:
+        from app.models.onedrive import OneDriveFolder
+
+        folders = OneDriveFolder.query.filter(
+            (OneDriveFolder.persona == persona_name) | (OneDriveFolder.persona.is_(None)),
+            OneDriveFolder.sync_status == "synced",
+            OneDriveFolder.cached_content.isnot(None),
+        ).all()
+
+        if not folders:
+            return ""
+
+        parts = []
+        for folder in folders:
+            if folder.cached_content:
+                parts.append(folder.cached_content)
+
+        if parts:
+            return "\n\nAdditional context from organizational documents:\n" + "\n\n".join(parts)
+    except Exception as e:
+        logger.warning("Failed to load augmentation data: %s", str(e))
+
+    return ""
+
+
 class Orchestrator:
     """Central orchestrator that manages a conversation with a persona agent.
 
@@ -19,12 +46,15 @@ class Orchestrator:
         self.session_id = session_id
         self.conversation_history: list[dict] = []
 
+        augmentation = _load_augmentation(persona_name)
+        self.system_prompt = self.persona.system_prompt + augmentation
+
     def process_message(self, user_message: str) -> str:
         """Send user message through the persona agent and return response."""
         self.conversation_history.append({"role": "user", "content": user_message})
 
         messages = [
-            {"role": "system", "content": self.persona.system_prompt},
+            {"role": "system", "content": self.system_prompt},
             *self.conversation_history,
         ]
 
