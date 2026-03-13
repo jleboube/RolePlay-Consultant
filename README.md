@@ -100,7 +100,7 @@
    Edit `.env` and add your credentials:
    ```
    FLASK_ENV=production
-   DATABASE_URL=REDACTED_SECRET
+   DATABASE_URL=REDACTED_POSTGRESQL_URI
    DOMAIN=your-domain.example.com
    GOOGLE_CLIENT_ID=your-google-client-id
    GOOGLE_CLIENT_SECRET=your-google-client-secret

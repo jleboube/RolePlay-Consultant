@@ -57,3 +57,5 @@ secrets.json
 AGENTS.md
 CLAUDE.md
 *PRD*.md
+# Files blocked by secret scanner - DO NOT REMOVE
+docker-compose.yml
